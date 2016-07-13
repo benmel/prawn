@@ -240,6 +240,8 @@ module Prawn
     #   pdf.start_new_page(:margin => 100)
     #
     def start_new_page(options = {})
+      run_blocks @run_before_new_page_blocks, options
+
       if last_page = state.page
         last_page_size    = last_page.size
         last_page_layout  = last_page.layout
@@ -284,6 +286,18 @@ module Prawn
           state.on_page_create_action(self)
         end
       end
+
+      run_blocks @run_after_new_page_blocks
+    end
+
+    def run_before_new_page(&block)
+      @run_before_new_page_blocks ||= Array.new
+      @run_before_new_page_blocks <<  Proc.new(&block)
+    end
+
+    def run_after_new_page(&block)
+      @run_after_new_page_blocks ||= Array.new
+      @run_after_new_page_blocks <<  Proc.new(&block)
     end
 
     # Returns the number of pages in the document
@@ -647,6 +661,11 @@ module Prawn
     end
 
     private
+
+    def run_blocks(blocks, *args)
+      return if !blocks || blocks.empty?
+      blocks.each { |block| block.arity == 0 ? self.instance_eval(&block) : block.call(self, *args) }
+    end
 
     # setting override_settings to true ensures that a new graphic state does not end up using
     # previous settings.
